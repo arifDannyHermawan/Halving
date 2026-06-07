@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#07070e"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="₿ Halving"/>
+<link rel="apple-touch-icon" id="appleTouchIcon" href=""/>
+<title>₿ BTC Halving Live</title>
+<meta name="description" content="Live Bitcoin halving countdown, block height, price, mining difficulty and supply tracker."/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --f-mono:'DM Mono','Courier New',monospace;
+  --f-disp:'Outfit','Segoe UI',system-ui,sans-serif;
+  --r:20px; --ri:12px; --gap:12px; --ph:6px;
+  --bg:#07070e; --surface:#0d0d1a; --surface2:#111120;
+  --line:#1e1e2c; --line2:#252538;
+  --gold:#f7931a; --gold2:#ffb347; --goldDim:#7a4710; --goldGlow:rgba(247,147,26,.15);
+  --blue:#4d9fff; --blueDim:#1a3a6e; --blueGlow:rgba(77,159,255,.12);
+  --green:#0fd97e; --red:#ff4d6d;
+  --txt:#eeeef8; --txt2:#b0b0c8; --muted:#52526e;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;background:var(--bg);color:var(--txt);font-family:var(--f-mono);overscroll-behavior:none;}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:900;opacity:.4;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");}
+.glow-orb{position:fixed;top:-140px;left:50%;transform:translateX(-50%);width:520px;height:520px;background:radial-gradient(circle,rgba(247,147,26,.07) 0%,transparent 65%);pointer-events:none;z-index:0;}
+
+/* LAYOUT */
+.app{position:relative;z-index:1;max-width:420px;margin:0 auto;
+  padding:calc(env(safe-area-inset-top,0px) + 66px) 14px calc(env(safe-area-inset-bottom,0px) + 74px);
+  display:flex;flex-direction:column;gap:var(--gap);}
+
+/* FIX 11: backdrop-filter fallback for older Android */
+@supports not (backdrop-filter: blur(1px)){
+  .topbar,.bottom-bar{background:rgba(7,7,14,.98)!important;}
+}
+
+/* STICKY HEADER */
+.topbar{position:fixed;top:0;left:0;right:0;z-index:500;
+  background:rgba(7,7,14,.9);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--line);padding:env(safe-area-inset-top,0px) 16px 0;}
+.topbar-inner{max-width:420px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:56px;}
+.topbar-logo{display:flex;align-items:center;gap:9px;}
+.logo-coin{width:34px;height:34px;background:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--f-disp);font-weight:900;font-size:17px;color:#000;box-shadow:0 0 20px var(--goldGlow);animation:coinPulse 3s ease-in-out infinite;flex-shrink:0;}
+@keyframes coinPulse{0%,100%{box-shadow:0 0 18px var(--goldGlow);}50%{box-shadow:0 0 36px rgba(247,147,26,.28);}}
+.logo-text{font-family:var(--f-disp);font-weight:700;font-size:15px;letter-spacing:.02em;}
+.logo-text span{color:var(--gold);}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.retry-inline{font-size:10px;color:var(--gold);letter-spacing:.06em;display:none;animation:fadePulse 2s ease infinite;}
+.retry-inline.show{display:inline;}
+@keyframes fadePulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+.live-pill{display:flex;align-items:center;gap:5px;border-radius:99px;padding:5px 12px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-family:var(--f-disp);font-weight:600;transition:all .3s;background:rgba(15,217,126,.08);border:1px solid rgba(15,217,126,.22);color:var(--green);}
+.live-pill.offline{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.22);color:var(--red);}
+.live-pill.partial{background:rgba(247,147,26,.08);border-color:rgba(247,147,26,.22);color:var(--gold);}
+.live-dot{width:6px;height:6px;background:currentColor;border-radius:50%;animation:blink 1.6s ease infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.15;}}
+
+/* FIXED BOTTOM BAR */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:500;background:rgba(7,7,14,.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:0 16px env(safe-area-inset-bottom,0px);}
+.bottom-bar-inner{max-width:420px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:58px;}
+.last-update{font-size:11px;color:var(--muted);letter-spacing:.04em;line-height:1.4;}
+.last-update b{color:var(--txt2);font-weight:500;display:block;}
+.refresh-btn{display:flex;align-items:center;gap:7px;background:rgba(247,147,26,.1);border:1px solid rgba(247,147,26,.25);border-radius:var(--ri);padding:0 20px;height:42px;font-family:var(--f-mono);font-size:11px;color:var(--gold);letter-spacing:.08em;cursor:pointer;transition:all .15s;flex-shrink:0;}
+.refresh-btn:active{transform:scale(.96);background:rgba(247,147,26,.2);}
+.refresh-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.refresh-btn .ico{font-size:15px;}
+.refresh-btn.spinning .ico{animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* SECTION HEADERS */
+.section-hdr{display:flex;align-items:center;gap:8px;padding:2px 2px 0;margin-top:2px;}
+.section-hdr .sh-icon{font-size:13px;}
+.section-hdr .sh-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-family:var(--f-disp);font-weight:600;white-space:nowrap;}
+.section-hdr::after{content:'';flex:1;height:1px;background:var(--line);}
+
+/* SKELETON */
+.skel{background:linear-gradient(90deg,var(--surface) 25%,var(--line2) 50%,var(--surface) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;color:transparent!important;pointer-events:none;min-height:1em;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* BASE CARD */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);}
+.card.accent-gold::before{background:linear-gradient(90deg,transparent,rgba(247,147,26,.45),transparent);}
+.card.accent-blue::before{background:linear-gradient(90deg,transparent,rgba(77,159,255,.45),transparent);}
+
+/* HERO CARD */
+.hero-card{padding:22px 18px 20px;}
+.hero-card::after{content:'';position:absolute;top:-70px;right:-70px;width:180px;height:180px;background:radial-gradient(circle,rgba(247,147,26,.07) 0%,transparent 70%);pointer-events:none;}
+.hero-tag{display:inline-flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;}
+.hero-tag::before,.hero-tag::after{content:'';width:14px;height:1px;background:var(--gold);}
+.halving-title{font-family:var(--f-disp);font-weight:900;font-size:28px;line-height:1;margin-bottom:4px;}
+.halving-title span{color:var(--gold);}
+.est-label{font-size:11px;color:var(--muted);margin-bottom:20px;}
+.est-label b{color:var(--txt2);font-weight:500;}
+.timer{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px;}
+.t-cell{background:var(--surface2);border:1px solid var(--line);border-radius:14px;padding:12px 6px 10px;text-align:center;position:relative;overflow:hidden;}
+.t-cell::before{content:'';position:absolute;top:0;left:8%;right:8%;height:1px;background:linear-gradient(90deg,transparent,rgba(247,147,26,.3),transparent);}
+.t-num{font-family:var(--f-disp);font-weight:800;font-size:26px;color:var(--gold);display:block;line-height:1;text-shadow:0 0 22px rgba(247,147,26,.35);}
+.t-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;display:block;margin-top:5px;}
+
+/* PROGRESS BARS — unified height, distinct by colour */
+.prog-wrap{position:relative;}
+.prog-meta{display:flex;justify-content:space-between;font-size:11px;margin-bottom:7px;}
+.prog-meta .pl{color:var(--muted);}
+.prog-meta .pr{font-family:var(--f-disp);font-weight:700;}
+.prog-track{height:var(--ph);background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:7px;}
+.prog-bar{height:100%;border-radius:99px;transition:width 1.5s cubic-bezier(.4,0,.2,1);}
+.prog-bar.gold{background:linear-gradient(90deg,var(--goldDim),var(--gold),var(--gold2));position:relative;}
+.prog-bar.gold::after{content:'';position:absolute;right:0;top:0;bottom:0;width:8px;background:rgba(255,255,255,.4);border-radius:99px;animation:shimBar 2s ease-in-out infinite;}
+@keyframes shimBar{0%,100%{opacity:0;}50%{opacity:1;}}
+.prog-bar.blue{background:linear-gradient(90deg,var(--blueDim),var(--blue));}
+.prog-feet{display:flex;justify-content:space-between;font-size:11px;}
+
+/* PRICE CARD */
+.price-card{padding:18px 18px 16px;}
+.price-card::after{content:'';position:absolute;top:-50px;right:-50px;width:140px;height:140px;background:radial-gradient(circle,rgba(247,147,26,.06) 0%,transparent 70%);pointer-events:none;}
+.price-main{display:flex;align-items:flex-end;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+.price-value{font-family:var(--f-disp);font-weight:900;font-size:clamp(28px,8vw,38px);line-height:1;color:var(--gold);white-space:nowrap;}
+.price-chg-pill{font-family:var(--f-disp);font-weight:700;font-size:12px;padding:4px 10px;border-radius:99px;margin-bottom:4px;white-space:nowrap;}
+.price-chg-pill.up{background:rgba(15,217,126,.1);border:1px solid rgba(15,217,126,.2);color:var(--green);}
+.price-chg-pill.dn{background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.2);color:var(--red);}
+.price-chg-pill.neu{background:var(--surface2);border:1px solid var(--line);color:var(--muted);}
+.price-divider{height:1px;background:var(--line);margin-bottom:8px;}
+.price-mcap-row{display:flex;align-items:center;justify-content:space-between;}
+.price-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
+.price-mcap{font-family:var(--f-disp);font-weight:700;font-size:15px;color:var(--txt2);}
+
+/* TWO-COL */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.info-card{padding:14px 15px;}
+.ic-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.ic-val{font-family:var(--f-disp);font-weight:800;font-size:22px;line-height:1;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ic-val.gold{color:var(--gold);}
+.ic-val.blue{color:var(--blue);}
+.ic-sub{font-size:11px;color:var(--muted);margin-top:5px;}
+
+/* REWARD */
+.reward-card{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.reward-card::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 0% 50%,rgba(247,147,26,.05) 0%,transparent 55%);pointer-events:none;}
+.rc-left{position:relative;flex:1;min-width:0;}
+.rc-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;}
+.rc-flow{display:flex;align-items:center;gap:10px;margin-bottom:5px;}
+.rc-old{font-family:var(--f-disp);font-weight:600;font-size:17px;color:var(--muted);text-decoration:line-through;}
+.rc-arrow{color:var(--gold);font-size:14px;}
+.rc-new{font-family:var(--f-disp);font-weight:900;font-size:24px;color:var(--gold);}
+.rc-unit{font-size:11px;color:var(--muted);}
+.rc-right{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;}
+.rc-badge{background:rgba(247,147,26,.1);border:1px solid rgba(247,147,26,.28);border-radius:var(--ri);padding:10px 14px;text-align:center;}
+.rc-badge .pct{font-family:var(--f-disp);font-weight:900;font-size:22px;color:var(--gold);}
+.rc-badge .plbl{font-size:11px;color:var(--goldDim);text-transform:uppercase;letter-spacing:.1em;}
+.halvings-left{font-size:11px;color:var(--muted);text-align:center;line-height:1.4;}
+.halvings-left b{color:var(--txt2);display:block;font-size:13px;font-family:var(--f-disp);}
+
+/* SUPPLY */
+.supply-card{padding:16px 18px;}
+.supply-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.supply-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
+.supply-vals{font-size:13px;color:var(--txt2);font-family:var(--f-disp);font-weight:600;}
+.supply-vals span{color:var(--gold);}
+.supply-feet{display:flex;justify-content:space-between;font-size:11px;margin-top:7px;}
+.supply-feet .l{color:var(--gold);}.supply-feet .r{color:var(--muted);}
+
+/* DIFFICULTY */
+.diff-card{padding:16px 18px;}
+.diff-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.diff-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:var(--f-disp);font-weight:600;}
+.diff-badge{font-size:11px;font-family:var(--f-disp);font-weight:700;padding:4px 11px;border-radius:99px;}
+.diff-badge.up{background:rgba(15,217,126,.1);border:1px solid rgba(15,217,126,.25);color:var(--green);}
+.diff-badge.dn{background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);color:var(--red);}
+.diff-badge.neu{background:rgba(77,159,255,.1);border:1px solid rgba(77,159,255,.25);color:var(--blue);}
+.diff-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.diff-stat{background:var(--surface2);border:1px solid var(--line);border-radius:var(--ri);padding:11px 13px;}
+.diff-stat .dl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.diff-stat .dv{font-family:var(--f-disp);font-weight:800;font-size:18px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.diff-stat .dv.blue{color:var(--blue);}
+.diff-stat .dv.green{color:var(--green);}
+.diff-stat .dv.red{color:var(--red);}
+.diff-stat .dv.gold{color:var(--gold);}
+
+/* CHART — FIX: wider y-axis, proper layout */
+.chart-outer{display:flex;gap:6px;margin-bottom:4px;}
+.chart-y-axis{display:flex;flex-direction:column;justify-content:space-between;padding:2px 0;width:52px;flex-shrink:0;}
+.chart-y-axis span{font-size:10px;color:var(--muted);text-align:right;line-height:1;white-space:nowrap;}
+.chart-wrap{flex:1;height:150px;min-height:150px;background:transparent;}
+.chart-wrap svg{width:100%;height:100%;display:block;}
+
+.chart-x-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:10px;padding-left:56px;}
+
+.chart-badge{font-size:10px;font-family:var(--f-disp);font-weight:700;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;display:block;}
+/* Chart empty state */
+.chart-empty{display:flex;align-items:center;justify-content:center;height:150px;font-size:11px;color:var(--muted);background:var(--surface2);border-radius:var(--ri);margin-bottom:16px;}
+
+/* Retarget section */
+.retarget-section{background:var(--surface2);border:1px solid var(--line);border-radius:var(--ri);padding:12px 14px;}
+.retarget-header{display:flex;justify-content:space-between;font-size:11px;margin-bottom:8px;}
+.retarget-header .rl{color:var(--muted);}
+.retarget-header .rr{color:var(--blue);font-family:var(--f-disp);font-weight:700;}
+.retarget-note{font-size:11px;color:var(--muted);margin-top:7px;}
+
+/* HISTORY */
+.history-card{padding:16px 18px;}
+.history-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;font-family:var(--f-disp);font-weight:600;}
+.h-list{display:flex;flex-direction:column;gap:7px;}
+.h-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--ri);border:1px solid transparent;}
+.h-row.upcoming{border-color:rgba(247,147,26,.28);background:rgba(247,147,26,.04);}
+.h-n{font-family:var(--f-disp);font-weight:700;font-size:12px;color:var(--muted);width:22px;flex-shrink:0;}
+.h-row.upcoming .h-n{color:var(--gold);}
+.h-info{flex:1;min-width:0;}
+.h-date{font-size:12px;color:var(--txt);}
+.h-block{font-size:11px;color:var(--muted);margin-top:1px;}
+.h-rew{text-align:right;flex-shrink:0;}
+.h-rew .amt{font-family:var(--f-disp);font-weight:700;font-size:13px;color:var(--txt);}
+.h-row.upcoming .h-rew .amt{color:var(--gold);}
+.h-rew .px{font-size:11px;color:var(--muted);margin-top:2px;}
+.upcoming-tag{font-size:11px;font-family:var(--f-disp);font-weight:700;background:rgba(247,147,26,.12);border:1px solid rgba(247,147,26,.25);color:var(--gold);border-radius:99px;padding:2px 7px;}
+
+@keyframes flashIn{from{opacity:.6;}to{opacity:1;}}
+.refreshed{animation:flashIn .35s ease;}
+</style>
+</head>
+<body>
+<div class="glow-orb"></div>
+
+<!-- STICKY HEADER -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="topbar-logo">
+      <div class="logo-coin">₿</div>
+      <div class="logo-text"><span>BTC</span> Halving</div>
+    </div>
+    <div class="topbar-right">
+      <span class="retry-inline" id="retryInline">⟳ Retrying...</span>
+      <div class="live-pill" id="livePill" role="status" aria-live="polite" aria-label="Data status">
+        <div class="live-dot"></div>
+        <span id="liveText">LOADING</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- HERO -->
+  <div class="card accent-gold hero-card">
+    <div class="hero-tag">NEXT HALVING</div>
+    <div class="halving-title">Halving <span>#5</span></div>
+    <div class="est-label">Estimated: <b id="estDate">calculating...</b></div>
+    <div class="timer">
+      <div class="t-cell"><span class="t-num" id="cD">--</span><span class="t-lbl">Days</span></div>
+      <div class="t-cell"><span class="t-num" id="cH">--</span><span class="t-lbl">Hours</span></div>
+      <div class="t-cell"><span class="t-num" id="cM">--</span><span class="t-lbl">Mins</span></div>
+      <div class="t-cell"><span class="t-num" id="cS">--</span><span class="t-lbl">Secs</span></div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-meta">
+        <span class="pl">Halving Epoch Progress (4→5)</span>
+        <span class="pr" id="progPct" style="color:var(--gold)">0%</span>
+      </div>
+      <div class="prog-track"><div class="prog-bar gold" id="progBar" style="width:0%"></div></div>
+      <div class="prog-feet">
+        <span style="color:var(--gold)" id="blLeft">-- blocks remaining</span>
+        <span style="color:var(--muted)">of 210,000</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRICE & MARKET -->
+  <div class="section-hdr"><span class="sh-icon">💰</span><span class="sh-label">Price & Market</span></div>
+
+  <div class="card accent-gold price-card">
+    <div class="price-main">
+      <div class="price-value skel" id="btcPrice">$---,---</div>
+      <div class="price-chg-pill neu" id="priceChgPill">--</div>
+    </div>
+    <div class="price-divider"></div>
+    <div class="price-mcap-row">
+      <span class="price-lbl">Market Cap</span>
+      <span class="price-mcap skel" id="btcMcap">loading...</span>
+    </div>
+  </div>
+
+  <!-- BLOCK INFO -->
+  <div class="section-hdr"><span class="sh-icon">⛓</span><span class="sh-label">Block Info</span></div>
+
+  <div class="two-col">
+    <div class="card info-card">
+      <div class="ic-lbl">Current Height</div>
+      <div class="ic-val blue skel" id="blockH">---</div>
+      <div class="ic-sub">Target: 1,050,000</div>
+    </div>
+    <div class="card info-card">
+      <div class="ic-lbl">Blocks Left</div>
+      <div class="ic-val gold skel" id="blLeftCard">---</div>
+      <div class="ic-sub">to Halving #5</div>
+    </div>
+  </div>
+
+  <div class="card accent-gold reward-card">
+    <div class="rc-left">
+      <div class="rc-lbl">Block Reward — At Halving #5</div>
+      <div class="rc-flow">
+        <span class="rc-old">3.125</span>
+        <span class="rc-arrow">→</span>
+        <span class="rc-new">1.5625</span>
+      </div>
+      <div class="rc-unit">BTC per block mined</div>
+    </div>
+    <div class="rc-right">
+      <div class="rc-badge">
+        <div class="pct">−50%</div>
+        <div class="plbl">Reward Cut</div>
+      </div>
+      <!-- BUG FIX: correct halvings remaining ~28 -->
+      <div class="halvings-left"><b id="halvingsLeft">~28</b>halvings until<br/>last BTC ~2140</div>
+    </div>
+  </div>
+
+  <div class="card supply-card">
+    <div class="supply-header">
+      <span class="supply-title">Total BTC Supply</span>
+      <span class="supply-vals"><span id="supplyMined">--</span> / 21M BTC</span>
+    </div>
+    <div class="prog-track"><div class="prog-bar gold" id="supplyBar" style="width:0%"></div></div>
+    <div class="supply-feet">
+      <span class="l" id="supplyPct">--% mined</span>
+      <span class="r" id="supplyLeft">-- remaining</span>
+    </div>
+  </div>
+
+  <!-- MINING DIFFICULTY -->
+  <div class="section-hdr"><span class="sh-icon">⛏</span><span class="sh-label">Mining Difficulty</span></div>
+
+  <div class="card accent-blue diff-card">
+    <div class="diff-header">
+      <span class="diff-title">Difficulty Stats</span>
+      <span class="diff-badge neu" id="diffBadge">Loading...</span>
+    </div>
+    <div class="diff-stats">
+      <div class="diff-stat">
+        <div class="dl">Difficulty</div>
+        <div class="dv blue skel" id="diffCurrent">---</div>
+      </div>
+      <div class="diff-stat">
+        <div class="dl">Last Adj.</div>
+        <div class="dv skel" id="diffLastChg">---</div>
+      </div>
+      <div class="diff-stat">
+        <div class="dl">Blocks Left</div>
+        <div class="dv gold skel" id="diffBlksLeft">---</div>
+      </div>
+      <div class="diff-stat">
+        <div class="dl">Est. Change</div>
+        <div class="dv skel" id="diffEst">---</div>
+      </div>
+    </div>
+
+    <div class="chart-badge">ALL TIME · LOG SCALE</div>
+    <div id="chartEmpty" class="chart-empty">⟳ Loading difficulty history...</div>
+    <div id="chartContainer" style="display:none">
+      <div class="chart-outer">
+        <div class="chart-y-axis" id="chartYAxis">
+          <span>--</span><span>--</span><span>--</span><span>--</span>
+        </div>
+        <div class="chart-wrap">
+          <svg id="diffSvg" viewBox="0 0 300 140" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="chartTitle chartDesc">
+              <title id="chartTitle">Bitcoin Mining Difficulty History</title>
+              <desc id="chartDesc">Line chart showing Bitcoin mining difficulty over the past 2+ years</desc>
+            <defs>
+              <linearGradient id="cGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#4d9fff" stop-opacity="0.22"/>
+                <stop offset="100%" stop-color="#4d9fff" stop-opacity="0"/>
+              </linearGradient>
+              <filter id="gf"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <line x1="0" y1="4" x2="300" y2="4" stroke="#1e1e2c" stroke-width="1"/>
+            <line x1="0" y1="50" x2="300" y2="50" stroke="#1e1e2c" stroke-width="1"/>
+            <line x1="0" y1="96" x2="300" y2="96" stroke="#1e1e2c" stroke-width="1"/>
+            <line x1="0" y1="136" x2="300" y2="136" stroke="#1e1e2c" stroke-width="1"/>
+            <path id="svgArea" fill="url(#cGrad)" d=""/>
+            <path id="svgLine" fill="none" stroke="#4d9fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" filter="url(#gf)" d=""/>
+            <g id="svgDots"></g>
+          </svg>
+        </div>
+      </div>
+      <div class="chart-x-labels" id="chartXLabels"></div>
+    </div>
+
+    <div class="retarget-section">
+      <div class="retarget-header">
+        <span class="rl">Retarget Epoch Progress (2,016 blocks)</span>
+        <span class="rr" id="adjPct">0%</span>
+      </div>
+      <div class="prog-track"><div class="prog-bar blue" id="adjFill" style="width:0%"></div></div>
+      <div class="retarget-note" id="retargetNote">Calculating next retarget...</div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="section-hdr"><span class="sh-icon">📜</span><span class="sh-label">Halving History</span></div>
+
+  <div class="card history-card">
+    <div class="h-list">
+      <div class="h-row upcoming">
+        <div class="h-n">#5</div>
+        <div class="h-info">
+          <div class="h-date" id="nextHalvDate">~2028</div>
+          <div class="h-block">Block 1,050,000</div>
+        </div>
+        <div class="h-rew">
+          <div class="amt">1.5625 BTC</div>
+          <div class="px"><span class="upcoming-tag">Upcoming</span></div>
+        </div>
+      </div>
+      <div class="h-row">
+        <div class="h-n">#4</div>
+        <div class="h-info"><div class="h-date">Apr 20, 2024</div><div class="h-block">Block 840,000</div></div>
+        <div class="h-rew"><div class="amt">3.125 BTC</div><div class="px">~$63,800</div></div>
+      </div>
+      <div class="h-row">
+        <div class="h-n">#3</div>
+        <div class="h-info"><div class="h-date">May 11, 2020</div><div class="h-block">Block 630,000</div></div>
+        <div class="h-rew"><div class="amt">6.25 BTC</div><div class="px">~$8,787</div></div>
+      </div>
+      <div class="h-row">
+        <div class="h-n">#2</div>
+        <div class="h-info"><div class="h-date">Jul 9, 2016</div><div class="h-block">Block 420,000</div></div>
+        <div class="h-rew"><div class="amt">12.5 BTC</div><div class="px">~$650</div></div>
+      </div>
+      <div class="h-row">
+        <div class="h-n">#1</div>
+        <div class="h-info"><div class="h-date">Nov 28, 2012</div><div class="h-block">Block 210,000</div></div>
+        <div class="h-rew"><div class="amt">25 BTC</div><div class="px">~$12</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FIXED BOTTOM BAR -->
+<div class="bottom-bar">
+  <div class="bottom-bar-inner">
+    <div class="last-update">Auto-refresh: 30s<b id="lastUpdate">--:--:--</b></div>
+    <div class="refresh-btn" id="refreshBtn" onclick="doRefresh()" role="button" tabindex="0" aria-label="Refresh live data" onkeydown="if(event.key==='Enter'||event.key===' ')doRefresh()">
+      <span class="ico">↻</span> Refresh
+    </div>
+  </div>
+</div>
+
+<script>
+function genIconPng(size){
+  const cv=document.createElement('canvas');cv.width=cv.height=size;
+  const ctx=cv.getContext('2d');
+  const r=size*0.2;
+  ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(size-r,0);
+  ctx.quadraticCurveTo(size,0,size,r);ctx.lineTo(size,size-r);
+  ctx.quadraticCurveTo(size,size,size-r,size);ctx.lineTo(r,size);
+  ctx.quadraticCurveTo(0,size,0,size-r);ctx.lineTo(0,r);
+  ctx.quadraticCurveTo(0,0,r,0);ctx.closePath();
+  ctx.fillStyle='#f7931a';ctx.fill();
+  ctx.fillStyle='#000';ctx.font=`bold ${size*0.62}px Arial`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('₿',size/2,size*0.54);
+  return cv.toDataURL('image/png');
+}
+const icon192=genIconPng(192);
+let icon512=null;setTimeout(()=>{icon512=genIconPng(512);},2000);
+
+// Inject apple-touch-icon
+const ati=document.getElementById('appleTouchIcon');
+if(ati)ati.href=icon192;
+
+// PWA Manifest
+const manifest={name:"BTC Halving Live",short_name:"₿ Halving",start_url:".",display:"standalone",background_color:"#07070e",theme_color:"#07070e",icons:[{src:icon192,sizes:"192x192",type:"image/png"},{src:icon512,sizes:"512x512",type:"image/png"}]};
+const mb=new Blob([JSON.stringify(manifest)],{type:"application/json"});
+const ml=document.createElement("link");ml.rel="manifest";ml.href=URL.createObjectURL(mb);document.head.appendChild(ml);
+
+const NEXT_HALVING=1_050_000,EPOCH4_START=840_000,EPOCH_LEN=210_000,DIFF_EPOCH=2016,MAX_SUPPLY=21_000_000,AVG_SECS=598.31;
+let halvingTarget=null;
+let autoInterval=null;
+
+// Supply calc
+function calcSupply(b){const r=[50,25,12.5,6.25,3.125,1.5625];let s=0;for(let i=0;i<r.length;i++){const e=Math.min(b,EPOCH_LEN);s+=e*r[i];b-=e;if(b<=0)break;}return s;}
+
+// Countdown
+function tick(){
+  if(!halvingTarget)return;
+  const df=halvingTarget-Date.now();
+  if(df<=0){['cD','cH','cM','cS'].forEach(id=>document.getElementById(id).textContent='00');return;}
+  document.getElementById('cD').textContent=String(Math.floor(df/86400000)).padStart(2,'0');
+  document.getElementById('cH').textContent=String(Math.floor(df%86400000/3600000)).padStart(2,'0');
+  document.getElementById('cM').textContent=String(Math.floor(df%3600000/60000)).padStart(2,'0');
+  document.getElementById('cS').textContent=String(Math.floor(df%60000/1000)).padStart(2,'0');
+}
+setInterval(tick,1000);
+
+// Skeleton
+function unSkel(id){const el=document.getElementById(id);if(el){el.classList.remove('skel');}}
+function setSkelAll(){['btcPrice','btcMcap','blockH','blLeftCard','diffCurrent','diffLastChg','diffBlksLeft','diffEst'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('skel');});}
+
+// Retry fetch
+async function tryFetch(fn,retries=2){for(let i=0;i<=retries;i++){try{const r=await fn();if(r!=null)return r;}catch{}if(i<retries)await new Promise(r=>setTimeout(r,1200));}return null;}
+
+// Block height
+async function fetchBlock(){
+  const srcs=[
+    ()=>fetch('https://mempool.space/api/blocks/tip/height',{cache:'no-store'}).then(r=>r.ok?r.json():null),
+    ()=>fetch('https://blockchain.info/q/getblockcount',{cache:'no-store'}).then(r=>r.ok?r.text().then(t=>parseInt(t.trim())):null),
+    ()=>fetch('https://blockstream.info/api/blocks/tip/height',{cache:'no-store'}).then(r=>r.ok?r.json():null),
+  ];
+  for(const s of srcs){const v=await tryFetch(s,1);if(v&&v>800000)return{value:v,live:true};}
+  const el=(Date.now()-new Date('2024-04-20T00:00:00Z').getTime())/1000;
+  return{value:Math.floor(840000+el/AVG_SECS),live:false};
+}
+
+// Price
+async function fetchPrice(){
+  const srcs=[
+    ()=>fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_market_cap=true',{cache:'no-store'})
+      .then(r=>{if(!r.ok)throw 0;return r.json().then(d=>({price:d.bitcoin.usd,change:d.bitcoin.usd_24h_change,mcap:d.bitcoin.usd_market_cap}));}),
+    ()=>fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT',{cache:'no-store'})
+      .then(r=>{if(!r.ok)throw 0;return r.json().then(d=>({price:parseFloat(d.lastPrice),change:parseFloat(d.priceChangePercent),mcap:null}));}),
+    ()=>fetch('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD',{cache:'no-store'})
+      .then(r=>{if(!r.ok)throw 0;return r.json().then(d=>({price:d.USD,change:null,mcap:null}));}),
+  ];
+  for(const s of srcs){const v=await tryFetch(s,1);if(v&&v.price>1000)return v;}
+  return null;
+}
+
+async function fetchDifficulty(){
+  const res={current:null,currentDiff:null,history:null};
+
+  // 1. Current epoch info (already working)
+  try{
+    const r=await fetch('https://mempool.space/api/v1/difficulty-adjustment',{cache:'no-store'});
+    if(r.ok)res.current=await r.json();
+  }catch{}
+
+  // 2. Current difficulty — lightweight endpoint first
+  try{
+    const r=await fetch('https://blockchain.info/q/getdifficulty',{cache:'no-store'});
+    if(r.ok){const v=parseFloat(await r.text());if(v>0)res.currentDiff=v;}
+  }catch{}
+  if(!res.currentDiff){
+    try{
+      // Fallback: parse from latest block (bigger payload but reliable)
+      const r=await fetch('https://mempool.space/api/blocks/tip/hash',{cache:'no-store'});
+      if(r.ok){
+        const hash=(await r.text()).trim();
+        const r2=await fetch(`https://mempool.space/api/block/${hash}`,{cache:'no-store'});
+        if(r2.ok){const blk=await r2.json();if(blk.difficulty>0)res.currentDiff=blk.difficulty;}
+      }
+    }catch{}
+  }
+
+  // 3a. History — hashrate/all (has difficulty[] array)
+  try{
+    const r=await fetch('https://mempool.space/api/v1/mining/hashrate/all',{cache:'no-store'});
+    if(r.ok){
+      const d=await r.json();
+      if(Array.isArray(d.difficulty)&&d.difficulty.length>1)
+        res.history=d.difficulty
+          .filter(p=>p.avgDifficulty>0)
+          .map(p=>({timestamp:p.timestamp,avgDifficulty:p.avgDifficulty}));
+    }
+  }catch{}
+
+  // 3b. History fallback — difficulty-adjustments with interval
+  if(!res.history||res.history.length<2){
+    try{
+      for(const interval of['2y','1y']){
+        const r=await fetch(`https://mempool.space/api/v1/mining/difficulty-adjustments/${interval}`,{cache:'no-store'});
+        if(r.ok){
+          const d=await r.json();
+          if(Array.isArray(d)&&d.length>1){
+            res.history=d.slice(-36)
+              .map(p=>({timestamp:p.time||p.timestamp||0,avgDifficulty:p.difficulty||p.avgDifficulty||0}))
+              .filter(p=>p.avgDifficulty>0&&p.timestamp>0);
+            if(res.history.length>1)break;
+          }
+        }
+      }
+    }catch{}
+  }
+
+  // 4. GUARANTEED FALLBACK — all-time difficulty data
+  if(!res.history||res.history.length<2){
+    res.history=[
+      {timestamp:1390000000,avgDifficulty:1.98e9},
+      {timestamp:1402358400,avgDifficulty:8.00e9},
+      {timestamp:1414800000,avgDifficulty:39.60e9},
+      {timestamp:1428537600,avgDifficulty:47.59e9},
+      {timestamp:1441728000,avgDifficulty:52.28e9},
+      {timestamp:1454400000,avgDifficulty:120.03e9},
+      {timestamp:1466726400,avgDifficulty:199.31e9},
+      {timestamp:1469923200,avgDifficulty:213.40e9},
+      {timestamp:1482710400,avgDifficulty:317.58e9},
+      {timestamp:1496102400,avgDifficulty:521.98e9},
+      {timestamp:1510588800,avgDifficulty:1.36e12},
+      {timestamp:1516588800,avgDifficulty:2.60e12},
+      {timestamp:1532390400,avgDifficulty:5.95e12},
+      {timestamp:1547942400,avgDifficulty:5.11e12},
+      {timestamp:1560384000,avgDifficulty:7.93e12},
+      {timestamp:1577836800,avgDifficulty:13.80e12},
+      {timestamp:1589932800,avgDifficulty:16.10e12},
+      {timestamp:1610064000,avgDifficulty:21.72e12},
+      {timestamp:1625702400,avgDifficulty:13.67e12},
+      {timestamp:1643932800,avgDifficulty:26.64e12},
+      {timestamp:1656720000,avgDifficulty:29.57e12},
+      {timestamp:1669852800,avgDifficulty:36.95e12},
+      {timestamp:1672531200,avgDifficulty:35.36e12},
+      {timestamp:1674259200,avgDifficulty:37.59e12},
+      {timestamp:1675987200,avgDifficulty:39.35e12},
+      {timestamp:1677715200,avgDifficulty:43.05e12},
+      {timestamp:1679443200,avgDifficulty:43.55e12},
+      {timestamp:1681171200,avgDifficulty:46.84e12},
+      {timestamp:1682899200,avgDifficulty:48.17e12},
+      {timestamp:1684627200,avgDifficulty:53.91e12},
+      {timestamp:1686355200,avgDifficulty:53.36e12},
+      {timestamp:1688083200,avgDifficulty:55.62e12},
+      {timestamp:1689811200,avgDifficulty:52.33e12},
+      {timestamp:1691539200,avgDifficulty:53.92e12},
+      {timestamp:1693267200,avgDifficulty:56.01e12},
+      {timestamp:1694995200,avgDifficulty:57.12e12},
+      {timestamp:1696723200,avgDifficulty:55.85e12},
+      {timestamp:1698451200,avgDifficulty:61.03e12},
+      {timestamp:1700179200,avgDifficulty:67.96e12},
+      {timestamp:1701907200,avgDifficulty:67.31e12},
+      {timestamp:1703635200,avgDifficulty:72.01e12},
+      {timestamp:1705363200,avgDifficulty:73.20e12},
+      {timestamp:1707091200,avgDifficulty:72.01e12},
+      {timestamp:1708819200,avgDifficulty:76.40e12},
+      {timestamp:1710547200,avgDifficulty:79.35e12},
+      {timestamp:1712275200,avgDifficulty:83.15e12},
+      {timestamp:1714003200,avgDifficulty:88.39e12},
+      {timestamp:1715731200,avgDifficulty:83.28e12},
+      {timestamp:1717459200,avgDifficulty:79.50e12},
+      {timestamp:1719187200,avgDifficulty:82.05e12},
+      {timestamp:1720915200,avgDifficulty:90.67e12},
+      {timestamp:1722643200,avgDifficulty:89.47e12},
+      {timestamp:1724371200,avgDifficulty:92.67e12},
+      {timestamp:1726099200,avgDifficulty:95.67e12},
+      {timestamp:1727827200,avgDifficulty:101.65e12},
+      {timestamp:1729555200,avgDifficulty:102.29e12},
+      {timestamp:1731283200,avgDifficulty:103.92e12},
+      {timestamp:1733011200,avgDifficulty:109.78e12},
+      {timestamp:1734739200,avgDifficulty:114.17e12},
+      {timestamp:1736467200,avgDifficulty:113.76e12},
+      {timestamp:1738195200,avgDifficulty:109.52e12},
+      {timestamp:1739923200,avgDifficulty:112.63e12},
+      {timestamp:1741651200,avgDifficulty:121.63e12},
+      {timestamp:1743379200,avgDifficulty:123.23e12},
+      {timestamp:1745107200,avgDifficulty:126.98e12},
+      {timestamp:1746835200,avgDifficulty:127.62e12},
+      // Estimates Jul 2025 – Jun 2026 (fallback only, live data takes priority)
+      {timestamp:1748563200,avgDifficulty:131.40e12},
+      {timestamp:1750291200,avgDifficulty:133.80e12},
+      {timestamp:1752019200,avgDifficulty:136.20e12},
+      {timestamp:1753747200,avgDifficulty:138.60e12},
+      {timestamp:1755475200,avgDifficulty:141.00e12},
+      {timestamp:1757203200,avgDifficulty:143.40e12},
+      {timestamp:1758931200,avgDifficulty:145.80e12},
+      {timestamp:1760659200,avgDifficulty:148.20e12},
+      {timestamp:1762387200,avgDifficulty:150.60e12},
+      {timestamp:1764115200,avgDifficulty:153.00e12},
+      {timestamp:1765843200,avgDifficulty:155.40e12},
+      {timestamp:1767571200,avgDifficulty:157.80e12},
+    ];
+  }
+
+  // 5. Append live current value as the latest point
+  if(res.currentDiff&&res.currentDiff>0){
+    const now=Math.floor(Date.now()/1000);
+    const last=res.history[res.history.length-1];
+    // Replace last point if within 2 weeks, else append
+    if(now-last.timestamp<1209600)
+      res.history[res.history.length-1]={timestamp:now,avgDifficulty:res.currentDiff};
+    else
+      res.history.push({timestamp:now,avgDifficulty:res.currentDiff});
+  }
+
+  return res;
+}
+
+function fmtDiff(d,short=false){if(!d||d<=0)return'N/A';if(d>=1e12){const v=d/1e12;return(short?v.toFixed(0):v.toFixed(2))+'T';}if(d>=1e9){const v=d/1e9;return(short?v.toFixed(0):v.toFixed(2))+'G';}return(d/1e6).toFixed(short?0:1)+'M';}
+function fmtBig(n){if(!n)return'N/A';if(n>=1e12)return'$'+(n/1e12).toFixed(3)+' T';if(n>=1e9)return'$'+(n/1e9).toFixed(1)+' B';return'$'+Math.round(n).toLocaleString('en-US');}
+
+function renderChart(points){
+  const pts=points.filter(p=>(p.avgDifficulty||0)>0);
+  if(pts.length<2){
+    document.getElementById('chartEmpty').textContent='Not enough data points.';
+    document.getElementById('chartEmpty').style.display='flex';
+    document.getElementById('chartContainer').style.display='none';
+    return;
+  }
+  document.getElementById('chartEmpty').style.display='none';
+  document.getElementById('chartContainer').style.display='block';
+
+  const vals=pts.map(p=>p.avgDifficulty);
+  const W=300,H=140,P=4;
+
+  // LOG SCALE — essential for all-time (100,000x value range)
+  const logMin=Math.log10(Math.max(Math.min(...vals)*0.8,1));
+  const logMax=Math.log10(Math.max(...vals)*1.06);
+  const toX=i=>P+i/(pts.length-1)*(W-P*2);
+  const toY=v=>P+(1-(Math.log10(Math.max(v,1))-logMin)/(logMax-logMin))*(H-P*2);
+
+  let line='',area='';
+  pts.forEach((p,i)=>{
+    const x=toX(i),y=toY(vals[i]);
+    if(i===0){line=`M${x},${y}`;area=`M${x},${H} L${x},${y}`;}
+    else{
+      const px=toX(i-1),py=toY(vals[i-1]),cx=(px+x)/2;
+      line+=` C${cx},${py} ${cx},${y} ${x},${y}`;
+      area+=` C${cx},${py} ${cx},${y} ${x},${y}`;
+    }
+    if(i===pts.length-1)area+=` L${x},${H} Z`;
+  });
+  document.getElementById('svgLine').setAttribute('d',line);
+  document.getElementById('svgArea').setAttribute('d',area);
+
+  // Halving markers — dashed vertical lines with pill labels
+  const halvings=[
+    {ts:1353638400,label:'#1'},{ts:1468080000,label:'#2'},
+    {ts:1589140000,label:'#3'},{ts:1713484800,label:'#4'},
+  ];
+  const tMin=pts[0].timestamp,tMax=pts[pts.length-1].timestamp;
+  const tsToX=ts=>P+(ts-tMin)/(tMax-tMin)*(W-P*2);
+  const svg=document.getElementById('diffSvg');
+  svg.querySelectorAll('.halving-marker').forEach(el=>el.remove());
+  halvings.forEach(h=>{
+    if(h.ts<=tMin||h.ts>=tMax)return;
+    const x=tsToX(h.ts);
+    const vline=document.createElementNS('http://www.w3.org/2000/svg','line');
+    vline.setAttribute('x1',x);vline.setAttribute('y1','0');
+    vline.setAttribute('x2',x);vline.setAttribute('y2',H);
+    vline.setAttribute('stroke','rgba(247,147,26,0.28)');
+    vline.setAttribute('stroke-width','1');
+    vline.setAttribute('stroke-dasharray','4,3');
+    vline.classList.add('halving-marker');
+    svg.insertBefore(vline,svg.querySelector('#svgArea'));
+    // Pill label at bottom of chart
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',x-9);rect.setAttribute('y',H-16);
+    rect.setAttribute('width','18');rect.setAttribute('height','12');
+    rect.setAttribute('rx','3');rect.setAttribute('fill','rgba(247,147,26,0.18)');
+    rect.classList.add('halving-marker');svg.appendChild(rect);
+    const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',x);txt.setAttribute('y',H-7);
+    txt.setAttribute('fill','rgba(247,147,26,0.9)');
+    txt.setAttribute('font-size','8');txt.setAttribute('font-family','Arial');
+    txt.setAttribute('font-weight','bold');txt.setAttribute('text-anchor','middle');
+    txt.textContent=h.label;txt.classList.add('halving-marker');
+    svg.appendChild(txt);
+  });
+
+  // Dots
+  const g=document.getElementById('svgDots');g.innerHTML='';
+  const dotStep=Math.max(1,Math.floor(pts.length/12));
+  pts.forEach((p,i)=>{
+    if(i%dotStep!==0&&i!==pts.length-1)return;
+    const x=toX(i),y=toY(vals[i]),last=i===pts.length-1;
+    const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx',x);dot.setAttribute('cy',y);
+    dot.setAttribute('r',last?4.5:1.5);
+    dot.setAttribute('fill',last?'#4d9fff':'rgba(77,159,255,0.4)');
+    dot.setAttribute('stroke',last?'#07070e':'none');
+    dot.setAttribute('stroke-width',last?'2':'0');
+    g.appendChild(dot);
+  });
+
+  // Y-axis — 4 labels, log-spaced
+  const yAxis=document.getElementById('chartYAxis');yAxis.innerHTML='';
+  for(let i=0;i<4;i++){
+    const logV=logMax-(i/(3))*(logMax-logMin);
+    const sp=document.createElement('span');
+    sp.textContent=fmtDiff(Math.pow(10,logV),true);
+    yAxis.appendChild(sp);
+  }
+
+  // X-axis — time-based year labels (not index-based)
+  const labEl=document.getElementById('chartXLabels');labEl.innerHTML='';
+  const spanYears=(tMax-tMin)/(365.25*86400);
+  if(spanYears>2){
+    const startYear=new Date(tMin*1000).getFullYear()+1;
+    const endYear=new Date(tMax*1000).getFullYear();
+    const totalYears=endYear-startYear;
+    const step=Math.max(2,Math.ceil(totalYears/4));
+    const years=[];
+    for(let yr=startYear;yr<=endYear;yr+=step)years.push(yr);
+    if(years[years.length-1]!==endYear)years.push(endYear);
+    years.forEach(yr=>{
+      const sp=document.createElement('span');sp.textContent=`${yr}`;labEl.appendChild(sp);
+    });
+  } else {
+    const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const step=Math.max(1,Math.floor(pts.length/4));
+    const idxs=new Set([0]);
+    for(let i=step;i<pts.length-1;i+=step)idxs.add(i);
+    idxs.add(pts.length-1);
+    [...idxs].sort((a,b)=>a-b).forEach(i=>{
+      const d=new Date((pts[i].timestamp||0)*1000);
+      const sp=document.createElement('span');
+      sp.textContent=`${MO[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+      labEl.appendChild(sp);
+    });
+  }
+}
+
+function setBlock(block){
+  const left=NEXT_HALVING-block;
+  const pct=Math.min((block-EPOCH4_START)/EPOCH_LEN*100,100);
+  halvingTarget=new Date(Date.now()+left*AVG_SECS*1000);
+  document.getElementById('progPct').textContent=pct.toFixed(1)+'%';
+  document.getElementById('progBar').style.width=pct+'%';
+  document.getElementById('blLeft').textContent=left.toLocaleString('en-US')+' blocks remaining';
+  document.getElementById('estDate').textContent=halvingTarget.toLocaleDateString('en-US',{year:'numeric',month:'long'});
+  document.getElementById('nextHalvDate').textContent='~'+halvingTarget.getFullYear();
+  document.getElementById('blockH').textContent=block.toLocaleString('en-US');unSkel('blockH');
+  document.getElementById('blLeftCard').textContent=left.toLocaleString('en-US');unSkel('blLeftCard');
+    const halvLeft=Math.floor(Math.log2(1.5625/1e-8));
+  document.getElementById('halvingsLeft').textContent='~'+halvLeft;
+  const mined=calcSupply(block);
+  const sp=mined/MAX_SUPPLY*100;
+  const fmt=n=>n>=1e6?(n/1e6).toFixed(3)+'M':n.toLocaleString('en-US');
+  document.getElementById('supplyBar').style.width=sp.toFixed(2)+'%';
+  document.getElementById('supplyMined').textContent='~'+fmt(Math.round(mined));
+  document.getElementById('supplyPct').textContent=sp.toFixed(2)+'% mined';
+  document.getElementById('supplyLeft').textContent='~'+fmt(Math.round(MAX_SUPPLY-mined))+' remaining';
+}
+
+function setPrice(data){
+  if(!data)return;
+  document.getElementById('btcPrice').textContent='$'+Math.round(data.price).toLocaleString('en-US');unSkel('btcPrice');
+  const pill=document.getElementById('priceChgPill');
+  if(data.change!=null){const c=data.change;pill.textContent=(c>=0?'▲ +':'▼ ')+Math.abs(c).toFixed(2)+'% 24h';pill.className='price-chg-pill '+(c>=0?'up':'dn');}
+  else{pill.textContent='--';pill.className='price-chg-pill neu';}
+  const mc=document.getElementById('btcMcap');
+  mc.textContent=data.mcap?fmtBig(data.mcap):'N/A';unSkel('btcMcap');
+}
+
+function setDifficulty(data,block){
+  const epochStart=Math.floor(block/DIFF_EPOCH)*DIFF_EPOCH;
+  const intoEpoch=block-epochStart;
+  const blksLeft=DIFF_EPOCH-intoEpoch;
+  const epochPct=intoEpoch/DIFF_EPOCH*100;
+  document.getElementById('adjPct').textContent=epochPct.toFixed(1)+'%';
+  document.getElementById('adjFill').style.width=epochPct+'%';
+  document.getElementById('retargetNote').textContent=`Next retarget in ${blksLeft.toLocaleString('en-US')} blocks (~${(blksLeft*AVG_SECS/86400).toFixed(1)} days)`;
+
+  if(data.current){
+    const cur=data.current;
+    const lastChg=cur.previousRetarget||0,estChg=cur.difficultyChange||0;
+    document.getElementById('diffLastChg').textContent=(lastChg>=0?'+':'')+lastChg.toFixed(2)+'%';
+    document.getElementById('diffLastChg').className='dv '+(lastChg>0?'green':lastChg<0?'red':'gold');unSkel('diffLastChg');
+    document.getElementById('diffEst').textContent=(estChg>=0?'+':'')+estChg.toFixed(2)+'%';
+    document.getElementById('diffEst').className='dv '+(estChg>0.5?'green':estChg<-0.5?'red':'gold');unSkel('diffEst');
+    if(cur.remainingBlocks!=null){
+      const pct=cur.progressPercent||epochPct;
+      document.getElementById('adjPct').textContent=pct.toFixed(1)+'%';
+      document.getElementById('adjFill').style.width=pct+'%';
+      document.getElementById('retargetNote').textContent=`Next retarget in ${cur.remainingBlocks.toLocaleString('en-US')} blocks (~${(cur.remainingBlocks*AVG_SECS/86400).toFixed(1)} days)`;
+      document.getElementById('diffBlksLeft').textContent=cur.remainingBlocks.toLocaleString('en-US');
+    }else{document.getElementById('diffBlksLeft').textContent=blksLeft.toLocaleString('en-US');}
+    unSkel('diffBlksLeft');
+    const badge=document.getElementById('diffBadge');
+    if(estChg>1){badge.textContent='▲ Increasing';badge.className='diff-badge up';}
+    else if(estChg<-1){badge.textContent='▼ Decreasing';badge.className='diff-badge dn';}
+    else{badge.textContent='≈ Stable';badge.className='diff-badge neu';}
+  }else{
+    document.getElementById('diffBadge').textContent='Offline';document.getElementById('diffBadge').className='diff-badge neu';
+    ['diffLastChg','diffEst','diffBlksLeft'].forEach(id=>{document.getElementById(id).textContent='N/A';unSkel(id);});
+  }
+
+  // Current difficulty: prefer blockchain.info direct value
+  const diffVal=data.currentDiff||(data.history?.length>0?data.history[data.history.length-1].avgDifficulty:null);
+  document.getElementById('diffCurrent').textContent=fmtDiff(diffVal);unSkel('diffCurrent');
+
+  if(data.history?.length>1){
+    renderChart(data.history);
+  }else{
+    document.getElementById('chartEmpty').textContent='Difficulty history unavailable — check connection.';
+    document.getElementById('chartEmpty').style.display='flex';
+    document.getElementById('chartContainer').style.display='none';
+  }
+}
+
+function setStatus(blockLive,priceOk){
+  const pill=document.getElementById('livePill'),txt=document.getElementById('liveText'),retry=document.getElementById('retryInline');
+  if(blockLive&&priceOk){pill.className='live-pill';txt.textContent='LIVE';retry.classList.remove('show');}
+  else if(blockLive||priceOk){pill.className='live-pill partial';txt.textContent='PARTIAL';retry.classList.remove('show');}
+  else{pill.className='live-pill offline';txt.textContent='OFFLINE';retry.classList.add('show');}
+}
+
+async function refresh(){
+  try{
+  const[bR,pR,dR]=await Promise.allSettled([fetchBlock(),fetchPrice(),fetchDifficulty()]);
+  const bData=bR.status==='fulfilled'?bR.value:null;
+  const pData=pR.status==='fulfilled'?pR.value:null;
+  const dData=dR.status==='fulfilled'?dR.value:{current:null,currentDiff:null,history:null};
+  if(bData){setBlock(bData.value);setDifficulty(dData,bData.value);}
+  setPrice(pData);
+  setStatus(bData?.live===true,pData!==null);
+  const now=new Date();
+  document.getElementById('lastUpdate').textContent=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.querySelectorAll('.card').forEach(el=>{el.classList.remove('refreshed');void el.offsetWidth;el.classList.add('refreshed');});
+  }catch(err){console.warn('Refresh error:',err);}
+}
+
+async function doRefresh(){
+  if(navigator.vibrate)navigator.vibrate(40);
+  const btn=document.getElementById('refreshBtn');btn.classList.add('spinning');
+  await refresh();btn.classList.remove('spinning');
+}
+
+setSkelAll();
+refresh();
+autoInterval=setInterval(refresh,30000);
+let _visTimer=null;
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){
+    clearTimeout(_visTimer);
+    _visTimer=setTimeout(refresh,600);
+  }
+});
+
+// SW
+if('serviceWorker' in navigator){
+  const sw=`const CACHE='btc-v6';self.addEventListener('install',e=>{self.skipWaiting();});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==CACHE).map(n=>caches.delete(n)))));});self.addEventListener('fetch',e=>{const api=['blockchain.info','coingecko','binance','mempool','blockstream','cryptocompare'].some(h=>e.request.url.includes(h));if(api){e.respondWith(fetch(e.request).catch(()=>new Response('{}',{headers:{'Content-Type':'application/json'}})));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{caches.open(CACHE).then(c=>c.put(e.request,res.clone()));return res;})));});`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+}
+</script>
+</body>
+</html>
